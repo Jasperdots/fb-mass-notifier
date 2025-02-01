@@ -1,4 +1,4 @@
- # Run as Administrator
+# Ensure script runs as Administrator
 $AdminCheck = [System.Security.Principal.WindowsPrincipal] [System.Security.Principal.WindowsIdentity]::GetCurrent()
 $AdminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
 
@@ -12,7 +12,13 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
 $PYTHON_VERSION = "3.11.6"
 $PYTHON_INSTALLER = "python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
-$PIP_PACKAGES = "mitmproxy requests smtplib six cryptography"
+
+# List of required pip modules
+$PIP_PACKAGES = @(
+    "mitmproxy", "smtplib", "ssl", "logging", "email",
+    "subprocess", "time", "os", "signal", "json", "re",
+    "urllib3", "cryptography"
+)
 
 # Check if Python is installed
 $pythonInstalled = $false
@@ -48,7 +54,15 @@ try {
 # Install required pip packages
 Write-Host "Installing required pip packages..."
 python -m pip install --upgrade pip
-python -m pip install $PIP_PACKAGES
+foreach ($pkg in $PIP_PACKAGES) {
+    python -m pip install $pkg
+}
+
+# Verify mitmproxy installation
+if (-not (Get-Command mitmdump -ErrorAction SilentlyContinue)) {
+    Write-Host "❌ mitmdump not found! Installation failed."
+    exit 1
+}
 
 # Download mitmproxy CA Certificate
 Write-Host "Running mitmproxy to generate CA Certificate..."
@@ -59,10 +73,13 @@ Stop-Process -Name "mitmdump" -Force
 # Install mitmproxy CA Certificate
 Write-Host "Installing mitmproxy CA Certificate..."
 $certPath = "$env:USERPROFILE\.mitmproxy\mitmproxy-ca-cert.pem"
-$certStore = certutil -addstore -f "ROOT" $certPath
+if (Test-Path $certPath) {
+    certutil -addstore -f "ROOT" $certPath
+} else {
+    Write-Host "❌ mitmproxy CA Certificate not found!"
+}
 
 # Final check
-Write-Host "Python and dependencies are installed successfully!"
+Write-Host "✅ Python and dependencies installed successfully!"
 python -m pip list
 Pause
- 
