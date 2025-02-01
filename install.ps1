@@ -31,7 +31,7 @@ if (-not $pythonInstalled) {
     Write-Host "Python is missing! Please install Python $PYTHON_VERSION manually."
     exit 1
 } else {
-    Write-Host "✅ Python is already installed."
+    Write-Host "Python is already installed."
 }
 
 # Refresh PATH (Ensures Python is recognized in current session)
@@ -41,12 +41,12 @@ $env:Path += ";C:\Python311\Scripts;C:\Python311"
 try {
     python --version
 } catch {
-    Write-Host "❌ Python installation failed!"
+    Write-Host "python installation failed!"
     exit 1
 }
 
 # ======================== INSTALL PIP PACKAGES ========================
-Write-Host "📦 Installing required pip packages..."
+Write-Host "Installing required pip packages..."
 python -m pip install --upgrade pip
 foreach ($pkg in $PIP_PACKAGES) {
     python -m pip install $pkg
@@ -54,28 +54,28 @@ foreach ($pkg in $PIP_PACKAGES) {
 
 # Verify mitmproxy installation
 if (-not (Get-Command mitmdump -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ mitmdump not found! Installation failed."
+    Write-Host "mitmdump not found! Installation failed."
     exit 1
 } else {
-    Write-Host "✅ mitmproxy installed successfully."
+    Write-Host "mitmproxy installed successfully."
 }
 
 # ======================== INSTALL MITMPROXY CERTIFICATE ========================
-Write-Host "🔑 Running mitmproxy to generate CA Certificate..."
+Write-Host "Running mitmproxy to generate CA Certificate..."
 Start-Process -NoNewWindow -FilePath "mitmdump" -ArgumentList "--set block_global=false"
 Start-Sleep -Seconds 5
 Stop-Process -Name "mitmdump" -Force
 
-Write-Host "🔏 Installing mitmproxy CA Certificate..."
+Write-Host "Installing mitmproxy CA Certificate..."
 $certPath = "$env:USERPROFILE\.mitmproxy\mitmproxy-ca-cert.pem"
 if (Test-Path $certPath) {
     certutil -addstore -f "ROOT" $certPath
-    Write-Host "✅ mitmproxy CA Certificate installed successfully."
+    Write-Host "mitmproxy CA Certificate installed successfully."
 } else {
-    Write-Host "❌ mitmproxy CA Certificate not found!"
+    Write-Host "mitmproxy CA Certificate not found!"
 }
 
 # ======================== FINAL CHECK ========================
-Write-Host "🎉 Python and dependencies installed successfully!"
+Write-Host "Python and dependencies installed successfully!"
 python -m pip list
 Pause
