@@ -14,9 +14,8 @@ $PYTHON_INSTALLER = "python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
 
 # List of required pip modules
-$PIP_PACKAGES = @(
-    "mitmproxy", "requests", "cryptography", "urllib3", "json",
-    "re", "logging", "subprocess", "signal", "time", "os"
+$REQUIRED_PIP_PACKAGES = @(
+    "mitmproxy", "requests", "cryptography", "urllib3"
 )
 
 # ======================== VERIFY PYTHON INSTALLATION ========================
@@ -46,10 +45,16 @@ try {
     exit 1
 }
 
+# ======================== GET PRE-INSTALLED PYTHON MODULES ========================
+$preInstalledModules = python -c "help('modules')" 2>$null | ForEach-Object { $_ -split '\s+' }
+
+# Filter out pre-installed modules from the required list
+$filteredPipPackages = $REQUIRED_PIP_PACKAGES | Where-Object { $_ -notin $preInstalledModules }
+
 # ======================== INSTALL PIP PACKAGES ========================
 Write-Host "[+] Installing required pip packages..."
 python -m pip install --upgrade pip
-foreach ($pkg in $PIP_PACKAGES) {
+foreach ($pkg in $filteredPipPackages) {
     if (-not (python -m pip show $pkg 2>$null)) {
         Write-Host "[+] Installing: $pkg..."
         python -m pip install $pkg
