@@ -28,6 +28,55 @@ $SOCKS5_PASS = "Natashakhan000"
 # Required pip modules
 $REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3")
 
+# ======================== INSTALL PROXYCHAINS4 FIRST ========================
+if (-not (Test-Path $PROXYCHAINS_FOLDER)) {
+    Write-Host "Downloading ProxyChains4 for Windows..."
+    $ZipFile = "$env:TEMP\proxychains4.zip"
+
+    Invoke-WebRequest -Uri $PROXYCHAINS_URL -OutFile $ZipFile -ErrorAction Stop
+    Write-Host "ProxyChains4 downloaded."
+
+    Expand-Archive -Path $ZipFile -DestinationPath $PROXYCHAINS_FOLDER -Force
+    Remove-Item -Path $ZipFile -Force
+    Write-Host "ProxyChains4 extracted to: $PROXYCHAINS_FOLDER"
+} else {
+    Write-Host "ProxyChains4 is already installed."
+}
+
+# ======================== ADD PROXYCHAINS TO SYSTEM PATH ========================
+$CurrentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+if ($CurrentPath -notlike "*$PROXYCHAINS_FOLDER*") {
+    Write-Host "Adding ProxyChains4 to system PATH..."
+    [System.Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$PROXYCHAINS_FOLDER", "Machine")
+    Write-Host "ProxyChains4 added to PATH."
+} else {
+    Write-Host "ProxyChains4 is already in system PATH."
+}
+
+# ======================== RELOAD ENVIRONMENT VARIABLES ========================
+Write-Host "Reloading environment variables..."
+if (Get-Command refreshenv -ErrorAction SilentlyContinue) {
+    refreshenv
+} else {
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    Write-Host "Environment variables reloaded successfully."
+}
+
+# ======================== CONFIGURE PROXYCHAINS4 ========================
+Write-Host "Configuring ProxyChains4..."
+@"
+strict_chain
+proxy_dns
+remote_dns_subnet 224
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+
+[ProxyList]
+socks5  $SOCKS5_PROXY  $SOCKS5_PORT  $SOCKS5_USER  $SOCKS5_PASS
+"@ | Set-Content -Path $PROXYCHAINS_CONF -Encoding UTF8
+
+Write-Host "ProxyChains4 configuration updated."
+
 # ======================== VERIFY PYTHON INSTALLATION ========================
 $pythonInstalled = $false
 $pythonPath = ""
@@ -74,52 +123,12 @@ foreach ($pkg in $REQUIRED_PIP_PACKAGES) {
     }
 }
 
-# ======================== INSTALL PROXYCHAINS4 ========================
-if (-not (Test-Path $PROXYCHAINS_FOLDER)) {
-    Write-Host "Downloading ProxyChains4 for Windows..."
-    $ZipFile = "$env:TEMP\proxychains4.zip"
-    
-    Invoke-WebRequest -Uri $PROXYCHAINS_URL -OutFile $ZipFile -ErrorAction Stop
-    Write-Host "ProxyChains4 downloaded."
-
-    Expand-Archive -Path $ZipFile -DestinationPath $PROXYCHAINS_FOLDER -Force
-    Remove-Item -Path $ZipFile -Force
-    Write-Host " ProxyChains4 extracted to: $PROXYCHAINS_FOLDER"
-} else {
-    Write-Host " ProxyChains4 is already installed."
-}
-
-# ======================== ADD PROXYCHAINS TO SYSTEM PATH ========================
-$CurrentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-if ($CurrentPath -notlike "*$PROXYCHAINS_FOLDER*") {
-    Write-Host " Adding ProxyChains4 to system PATH..."
-    [System.Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$PROXYCHAINS_FOLDER", "Machine")
-    Write-Host "ProxyChains4 added to PATH. Restart your terminal for changes to take effect."
-} else {
-    Write-Host " ProxyChains4 is already in system PATH."
-}
-
-# ======================== CONFIGURE PROXYCHAINS4 ========================
-Write-Host "⚙ Configuring ProxyChains4..."
-@"
-strict_chain
-proxy_dns
-remote_dns_subnet 224
-tcp_read_time_out 15000
-tcp_connect_time_out 8000
-
-[ProxyList]
-socks5  $SOCKS5_PROXY  $SOCKS5_PORT  $SOCKS5_USER  $SOCKS5_PASS
-"@ | Set-Content -Path $PROXYCHAINS_CONF -Encoding UTF8
-
-Write-Host "ProxyChains4 configuration updated."
-
 # ======================== VERIFY MITMPROXY INSTALLATION ========================
 if (-not (Get-Command mitmdump -ErrorAction SilentlyContinue)) {
-    Write-Host " mitmdump not found! Installation failed."
+    Write-Host "mitmdump not found! Installation failed."
     exit 1
 } else {
-    Write-Host " mitmproxy installed successfully."
+    Write-Host "mitmproxy installed successfully."
 }
 
 # ======================== INSTALL MITMPROXY CERTIFICATE ========================
@@ -132,15 +141,15 @@ Write-Host "Installing mitmproxy CA Certificate..."
 $certPath = "$env:USERPROFILE\.mitmproxy\mitmproxy-ca-cert.pem"
 if (Test-Path $certPath) {
     Start-Process -NoNewWindow -FilePath "certutil" -ArgumentList "-addstore -f ROOT `"$certPath`"" -Wait
-    Write-Host " mitmproxy CA Certificate installed successfully."
+    Write-Host "mitmproxy CA Certificate installed successfully."
 } else {
-    Write-Host " mitmproxy CA Certificate not found!"
+    Write-Host "mitmproxy CA Certificate not found!"
 }
 
 # ======================== FINAL CHECK ========================
 Write-Host "ProxyChains4, Python, and dependencies installed successfully!"
 python -m pip list
-Write-Host " You can now use ProxyChains without specifying the full path!"
-Write-Host " Example command:"
+Write-Host "You can now use ProxyChains without specifying the full path!"
+Write-Host "Example command:"
 Write-Host "proxychains4 python your_script.py"
 Pause
