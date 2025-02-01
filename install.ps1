@@ -12,6 +12,7 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
 $PYTHON_VERSION = "3.11.6"
 $PYTHON_INSTALLER = "python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
+$PYTHON_INSTALL_PATH = "C:\Python311"
 
 # List of required pip modules
 $REQUIRED_PIP_PACKAGES = @(
@@ -28,14 +29,29 @@ try {
 } catch {}
 
 if (-not $pythonInstalled) {
-    Write-Host "Python is missing! Please install Python $PYTHON_VERSION manually."
-    exit 1
+    Write-Host "Python is missing! Downloading and installing Python $PYTHON_VERSION..."
+
+    # Download Python Installer
+    $installerPath = "$env:TEMP\$PYTHON_INSTALLER"
+    Invoke-WebRequest -Uri $PYTHON_URL -OutFile $installerPath
+
+    # Run Python Installer Silently
+    Start-Process -FilePath $installerPath -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1 Include_test=0" -Wait
+
+    # Verify Installation
+    $pythonPath = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $pythonPath) {
+        Write-Host "Python installation failed!"
+        exit 1
+    } else {
+        Write-Host "Python installed successfully at $pythonPath."
+    }
 } else {
     Write-Host "Python is already installed at $pythonPath."
 }
 
 # Refresh PATH to ensure Python & Scripts directory are accessible
-$env:Path += ";C:\Python311;C:\Python311\Scripts"
+$env:Path += ";$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
 
 # Verify Python accessibility
 try {
