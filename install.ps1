@@ -14,7 +14,7 @@ $PYTHON_INSTALLER = "python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
 $PYTHON_INSTALL_PATH = "C:\Python311"
 
-# List of required pip modules
+# Required pip modules (excluding built-ins)
 $REQUIRED_PIP_PACKAGES = @(
     "mitmproxy", "requests", "cryptography", "urllib3"
 )
@@ -62,10 +62,11 @@ try {
 }
 
 # ======================== GET PRE-INSTALLED PYTHON MODULES ========================
-$preInstalledModules = python -c "help('modules')" 2>$null | ForEach-Object { $_ -split '\s+' }
+$preInstalledModules = python -c "import sys; print(','.join(sys.builtin_module_names))" 2>$null
+$builtInModules = $preInstalledModules -split ','
 
 # Filter out pre-installed modules from the required list
-$filteredPipPackages = $REQUIRED_PIP_PACKAGES | Where-Object { $_ -notin $preInstalledModules }
+$filteredPipPackages = $REQUIRED_PIP_PACKAGES | Where-Object { $_ -notin $builtInModules }
 
 # ======================== INSTALL PIP PACKAGES ========================
 Write-Host "Installing required pip packages..."
