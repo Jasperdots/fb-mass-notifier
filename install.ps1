@@ -16,7 +16,7 @@ $PYTHON_INSTALL_PATH = "C:\Python311"
 
 
 # Required pip modules (including socks5 support)
-$REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3", "pysocks")
+$REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3", "pysocks", "python-dotenv")
 
 # ======================== VERIFY PYTHON INSTALLATION ========================
 $pythonInstalled = $false
