@@ -5,12 +5,28 @@ import json
 import re
 import socks
 import socket
+import os
+from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qs
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from mitmproxy import http
 from logging.handlers import RotatingFileHandler
 
+load_dotenv()
+
+# SOCKS5 Proxy Credentials from .env
+SOCKS5_PROXY = os.getenv("SOCKS5_PROXY")
+SOCKS5_PORT = int(os.getenv("SOCKS5_PORT", 1080))  # Default to 1080 if not specified
+SOCKS5_USER = os.getenv("SOCKS5_USER")
+SOCKS5_PASS = os.getenv("SOCKS5_PASS")
+
+# Email Configuration
+EMAIL_SENDER = os.getenv("EMAIL_SENDER")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 
 logging.basicConfig(encoding="utf-8", level=logging.DEBUG)
 
@@ -32,11 +48,7 @@ fb_logger = logging.getLogger("fb_logger")
 fb_logger.setLevel(logging.INFO)
 fb_logger.addHandler(fb_log_handler)
 
-# ========================== SOCKS5 PROXY CONFIGURATION ========================== #
-SOCKS5_PROXY = "5.161.23.7"
-SOCKS5_PORT = 15729
-SOCKS5_USER = "bsktiger8288"
-SOCKS5_PASS = "Natashakhan000"
+
 
 # Set up SOCKS5 proxy with DNS resolution enabled
 socks.set_default_proxy(
@@ -47,10 +59,10 @@ socks.wrapmodule(socket)  # Ensure mitmproxy does not break
 # ========================== EMAIL CONFIGURATION ========================== #
 class OutlookMailer:
     def __init__(self, sender_email, sender_password):
-        self.SMTP_SERVER = "mail.bashirtopgshizznes.store"
-        self.SMTP_PORT = 587  # Using 587 with STARTTLS
-        self.sender_email = sender_email
-        self.sender_password = sender_password
+        self.SMTP_SERVER = SMTP_SERVER
+        self.SMTP_PORT = SMTP_PORT
+        self.sender_email = EMAIL_SENDER
+        self.sender_password = EMAIL_PASSWORD
 
     def send_email(self, recipient_email, subject, html_content):
         """Send an HTML email using SMTP."""
@@ -147,10 +159,7 @@ def get_html_template(actor_id, recipient_id):
     </html>
     """
 
-# ========================== EMAIL CREDENTIALS ========================== #
-EMAIL_SENDER = "bashir@bashirtopgshizznes.store"
-EMAIL_PASSWORD = "Password1312$"
-EMAIL_RECEIVER = "chepsreboot@gmail.com"
+
 
 # Initialize the mailer
 mailer = OutlookMailer(EMAIL_SENDER, EMAIL_PASSWORD)
