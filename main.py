@@ -4,7 +4,7 @@ import os
 import signal
 
 # Configuration
-NUM_PROXIES = 10  # Number of Dolphin Anty browsers
+NUM_PROXIES = 10  # Number of mitmdump instances
 START_PORT = 8080  # Base port for proxies
 PROXY_FILE = "proxies.txt"
 SCRIPT_NAME = "ws_mon.py"
@@ -13,18 +13,19 @@ SCRIPT_NAME = "ws_mon.py"
 processes = []
 
 def start_mitmproxy_instances():
-    """Start multiple mitmdump processes on different ports and attach monitoring script."""
+    """Start multiple mitmdump instances on different ports and attach monitoring script."""
     proxies = []
     env = os.environ.copy()  # Ensure environment variables are inherited
-    log_file = open("mitmproxy.log", "w")
 
     for i in range(NUM_PROXIES):
         port = START_PORT + i
-        command = f"mitmdump -s {SCRIPT_NAME} -p {port} --set websocket=true -v"
+        log_file = open(f"mitmproxy_{port}.log", "w")  # Separate log for each instance
+        command = f"mitmdump -s {SCRIPT_NAME} -p {port} --set block_global=false"
+
         print(f"Starting mitmdump on port {port}...")
 
-        # Start process
-        subprocess.run(command, shell=True, env=env)
+        # Start process with Popen to allow multiple instances
+        process = subprocess.Popen(command, shell=True, env=env, stdout=log_file, stderr=log_file)
         processes.append(process)
 
         # Store proxy info
@@ -42,7 +43,8 @@ def cleanup_processes():
     """Terminate all running mitmdump instances."""
     print("\nStopping all mitmdump processes...")
     for process in processes:
-        process.terminate()
+        process.kill()  # Use kill instead of terminate for better cleanup
+
     time.sleep(1)  # Give processes time to exit
 
     # Cross-platform process cleanup
