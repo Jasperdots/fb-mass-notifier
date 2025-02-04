@@ -2,65 +2,114 @@ import subprocess
 import time
 import os
 import signal
+import sys
+from dotenv import load_dotenv
+
+# Load .env file for SOCKS5 credentials
+load_dotenv()
 
 # Configuration
-NUM_PROXIES = 10  # Number of mitmdump instances
-START_PORT = 8080  # Base port for proxies
-PROXY_FILE = "proxies.txt"
-SCRIPT_NAME = "ws_mon.py"
+NUM_PROXIES = 10  # Number of instances
+START_MITMPROXY_PORT = 8081  # mitmproxy ports
+START_PRIVOXY_PORT = 8118  # Privoxy ports
+PRIVOXY_CONFIG_DIR = "C:\\Program Files (x86)\\Privoxy"
+PRIVOXY_EXECUTABLE = os.path.join(PRIVOXY_CONFIG_DIR, "privoxy.exe")
+
+# SOCKS5 Proxy Configuration
+SOCKS5_PROXY = os.getenv("SOCKS5_PROXY")
+SOCKS5_PORT = os.getenv("SOCKS5_PORT")
+SOCKS5_USER = os.getenv("SOCKS5_USER")
+SOCKS5_PASS = os.getenv("SOCKS5_PASS")
+
+# Validate SOCKS5 settings
+if not SOCKS5_PROXY or not SOCKS5_PORT:
+    print("ERROR: Missing SOCKS5 proxy settings in .env file!")
+    sys.exit(1)
 
 # Store running processes
-processes = []
+mitmproxy_processes = []
+privoxy_processes = []
 
-def start_mitmproxy_instances():
-    """Start multiple mitmdump instances on different ports and attach monitoring script."""
-    proxies = []
-    env = os.environ.copy()  # Ensure environment variables are inherited
+def generate_privoxy_config(port):
+    """Generates a unique Privoxy configuration file for each instance."""
+    config_content = f"""
+listen-address  127.0.0.1:{port}
+forward-socks5 / {SOCKS5_USER}:{SOCKS5_PASS}@{SOCKS5_PROXY}:{SOCKS5_PORT} .
+    """.strip()
+
+    config_path = os.path.join(PRIVOXY_CONFIG_DIR, f"config-{port}.txt")
+    with open(config_path, "w") as f:
+        f.write(config_content)
+
+    return config_path
+
+def start_privoxy_instances():
+    """Start multiple Privoxy instances with different configurations."""
+    print("Starting Privoxy instances...")
 
     for i in range(NUM_PROXIES):
-        port = START_PORT + i
-        log_file = open(f"mitmproxy_{port}.log", "w")  # Separate log for each instance
-        command = f"mitmdump -s {SCRIPT_NAME} -p {port} --set block_global=false"
+        privoxy_port = START_PRIVOXY_PORT + i
+        config_path = generate_privoxy_config(privoxy_port)
 
-        print(f"Starting mitmdump on port {port}...")
+        # Start Privoxy with the specific config file
+        command = f'"{PRIVOXY_EXECUTABLE}" --config-file "{config_path}"'
+        process = subprocess.Popen(command, shell=True)
 
-        # Start process with Popen to allow multiple instances
-        process = subprocess.Popen(command, shell=True, env=env, stdout=log_file, stderr=log_file)
-        processes.append(process)
+        privoxy_processes.append(process)
+        print(f"Privoxy started on port {privoxy_port} using {config_path}")
 
-        # Store proxy info
-        proxies.append(f"127.0.0.1:{port}")
+def start_mitmproxy_instances():
+    """Start multiple mitmdump instances, each using a different Privoxy instance."""
+    print("Starting mitmproxy instances...")
 
-        time.sleep(0.5)  # Small delay for stability
+    for i in range(NUM_PROXIES):
+        mitmproxy_port = START_MITMPROXY_PORT + i
+        privoxy_port = START_PRIVOXY_PORT + i
+        log_file = open(f"mitmproxy_{mitmproxy_port}.log", "w")
 
-    # Write proxies to file
-    with open(PROXY_FILE, "w") as f:
-        f.write("\n".join(proxies))
+        # Mitmproxy command with upstream Privoxy proxy
+        command = f"mitmdump -s ws_mon.py -p {mitmproxy_port} --set websocket=true --mode upstream:http://127.0.0.1:{privoxy_port}"
+        process = subprocess.Popen(command, shell=True, stdout=log_file, stderr=log_file)
 
-    print(f"Proxies saved to {PROXY_FILE}")
+        mitmproxy_processes.append(process)
+        print(f"mitmproxy started on port {mitmproxy_port}, using Privoxy on {privoxy_port}")
 
-def cleanup_processes():
-    """Terminate all running mitmdump instances."""
-    print("\nStopping all mitmdump processes...")
-    for process in processes:
-        process.kill()  # Use kill instead of terminate for better cleanup
+def cleanup_processes(signum=None, frame=None):
+    """Terminate all running mitmdump and Privoxy instances gracefully."""
+    print("\n[!] Stopping all proxies...")
 
-    time.sleep(1)  # Give processes time to exit
+    for process in mitmproxy_processes:
+        try:
+            process.terminate()
+        except Exception as e:
+            print(f"Error stopping mitmproxy: {e}")
 
-    # Cross-platform process cleanup
-    if os.name == "nt":  # Windows
-        os.system("taskkill /F /IM mitmdump.exe")
-    else:  # Linux/Mac
-        os.system("pkill -f mitmdump")
+    for process in privoxy_processes:
+        try:
+            process.terminate()
+        except Exception as e:
+            print(f"Error stopping privoxy: {e}")
 
-    print("All proxies stopped.")
+    time.sleep(1)
+
+    os.system("taskkill /F /IM mitmdump.exe >nul 2>&1")
+    os.system("taskkill /F /IM privoxy.exe >nul 2>&1")
+
+    print("[✔] All proxies stopped.")
+    sys.exit(0)
+
+# Handle Ctrl+C and termination signals
+signal.signal(signal.SIGINT, cleanup_processes)
+signal.signal(signal.SIGTERM, cleanup_processes)
 
 # Run script
 try:
+    start_privoxy_instances()
+    time.sleep(2)  # Small delay to allow Privoxy to start
     start_mitmproxy_instances()
-    print("Press Ctrl+C to stop all proxies.")
+
+    print("[*] Proxies running. Press Ctrl+C to stop.")
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
     cleanup_processes()
-    print("All proxies stopped.")
