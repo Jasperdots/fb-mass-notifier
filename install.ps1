@@ -10,7 +10,7 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
 
 # ======================== CONFIGURATION ========================
 $PYTHON_VERSION = "3.11.6"
-$PYTHON_INSTALLER = "python-$PYTHON_VERSION-amd64.exe"
+$PYTHON_INSTALLER = "C:\Users\Administrator\Desktop\inst\python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
 $PYTHON_INSTALL_PATH = "C:\Python311"
 
@@ -20,7 +20,7 @@ $REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3", "
 # Privoxy Configuration
 $PRIVOXY_URL = "https://www.privoxy.org/sf-download-mirror/Win32/4.0.0%20%28stable%29/privoxy_setup_4.0.0.exe"
 $PRIVOXY_INSTALLER = "$env:TEMP\privoxy_setup.exe"
-$PRIVOXY_INSTALL_PATH = "C:\Privoxy"
+$PRIVOXY_INSTALL_PATH = "C:\Program Files (x86)\Privoxy"
 
 # Mitmproxy Configuration
 $NUM_INSTANCES = 10
@@ -28,10 +28,79 @@ $MITM_START_PORT = 8081
 $PRIVOXY_START_PORT = 8118
 $ENV_FILE = ".env"
 
+# ======================== INSTALL PYTHON ========================
+# ======================== INSTALL PYTHON ========================
+Write-Host "Checking if Python is installed..."
+
+$PythonInstalled = $false
+$PythonExecutable = $null
+
+# Attempt to detect Python installation
+$PythonPaths = @("python", "C:\Python311\python.exe", "C:\Program Files\Python311\python.exe", "C:\Program Files (x86)\Python311\python.exe")
+
+foreach ($path in $PythonPaths) {
+    if (Test-Path $path) {
+        $PythonInstalled = $true
+        $PythonExecutable = $path
+        break
+    }
+}
+
+if ($PythonInstalled) {
+    Write-Host "Python is already installed: $($PythonExecutable)"
+} else {
+    Write-Host "Python not found. Installing Python..."
+
+    if (-not (Test-Path $PYTHON_INSTALLER)) {
+        Write-Host "Downloading Python installer..."
+        Invoke-WebRequest -Uri $PYTHON_URL -OutFile $PYTHON_INSTALLER
+    }
+
+    Write-Host "Installing Python..."
+    Start-Process -FilePath $PYTHON_INSTALLER -ArgumentList "/quiet InstallAllUsers=1 TargetDir=$PYTHON_INSTALL_PATH PrependPath=1" -NoNewWindow -Wait
+
+    # Verify Installation
+    $PythonExecutable = "$PYTHON_INSTALL_PATH\python.exe"
+    if (Test-Path $PythonExecutable) {
+        Write-Host "Python installed successfully!"
+    } else {
+        Write-Host "Python installation failed!"
+        exit 1
+    }
+}
+
+# Ensure Python is in PATH
+$PythonPath = "$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
+$CurrentPath = [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine)
+
+if ($CurrentPath -notmatch [regex]::Escape($PYTHON_INSTALL_PATH)) {
+    Write-Host "Adding Python to system PATH..."
+    $NewPath = "$CurrentPath;$PythonPath"
+    [System.Environment]::SetEnvironmentVariable("Path", $NewPath, [System.EnvironmentVariableTarget]::Machine)
+}
+
+# Update the session's PATH
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine)
+
+Write-Host "Verifying Python installation..."
+$PythonVersion = & $PythonExecutable --version 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Python installation is not recognized. Try restarting PowerShell."
+} else {
+    Write-Host "Python installed successfully: $PythonVersion"
+}
+
+Write-Host "Ensuring pip is installed and updated..."
+& $PythonExecutable -m ensurepip
+& $PythonExecutable -m pip install --upgrade pip
+& $PythonExecutable -m pip install $REQUIRED_PIP_PACKAGES -join " "
+
+
+Write-Host "Python and pip setup completed successfully!"
+
 # ======================== PROMPT FOR SOCKS5 CREDENTIALS ========================
 Write-Host "Enter SOCKS5 Proxy Credentials (Press Enter to use existing values):"
 
-# Load existing values from .env if it exists
 if (Test-Path $ENV_FILE) {
     $envVars = Get-Content $ENV_FILE | Where-Object { $_ -match "=" } | ForEach-Object {
         $parts = $_ -split "=", 2
@@ -41,7 +110,6 @@ if (Test-Path $ENV_FILE) {
     }
 }
 
-# Prompt user for SOCKS5 Proxy details
 $SOCKS5_PROXY = Read-Host "Enter SOCKS5 Proxy IP" -Default $env:SOCKS5_PROXY
 $SOCKS5_PORT = Read-Host "Enter SOCKS5 Port" -Default $env:SOCKS5_PORT
 $SOCKS5_USER = Read-Host "Enter SOCKS5 Username" -Default $env:SOCKS5_USER
@@ -49,7 +117,6 @@ $SOCKS5_PASS = Read-Host "Enter SOCKS5 Password" -Default $env:SOCKS5_PASS -AsSe
 $SOCKS5_PASS = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SOCKS5_PASS))
 
-# Store credentials in .env file
 Write-Host "Saving credentials to .env file..."
 @"
 SOCKS5_PROXY=$SOCKS5_PROXY
@@ -70,7 +137,6 @@ if (-not (Test-Path "$PRIVOXY_INSTALL_PATH\privoxy.exe")) {
     Write-Host "Privoxy is already installed."
 }
 
-# ======================== CONFIGURE PRIVOXY FOR MULTIPLE PORTS ========================
 Write-Host "Configuring Privoxy..."
 $PrivoxyConfig = @()
 
@@ -85,11 +151,9 @@ forward-socks5 / ${SOCKS5_PROXY}:${SOCKS5_PORT} .
 $PrivoxyConfig -join "`n" | Set-Content -Path "$PRIVOXY_INSTALL_PATH\config" -Encoding UTF8
 Write-Host "Privoxy configured to use multiple ports."
 
-# Start Privoxy Service
 Write-Host "Starting Privoxy service..."
 Start-Process -NoNewWindow -FilePath "$PRIVOXY_INSTALL_PATH\privoxy.exe"
 
-# ======================== VERIFY MITMPROXY INSTALLATION ========================
 if (-not (Get-Command mitmdump -ErrorAction SilentlyContinue)) {
     Write-Host "mitmdump not found! Installation failed."
     exit 1
@@ -97,7 +161,6 @@ if (-not (Get-Command mitmdump -ErrorAction SilentlyContinue)) {
     Write-Host "mitmproxy installed successfully."
 }
 
-# ======================== INSTALL MITMPROXY CERTIFICATE ========================
 Write-Host "Running mitmproxy to generate CA Certificate..."
 Start-Process -NoNewWindow -FilePath "mitmdump" -ArgumentList "--set block_global=false"
 Start-Sleep -Seconds 5
@@ -112,7 +175,6 @@ if (Test-Path $certPath) {
     Write-Host "mitmproxy CA Certificate not found!"
 }
 
-# ======================== START MULTIPLE MITMPROXY INSTANCES ========================
 Write-Host "Starting multiple mitmproxy instances..."
 for ($i = 0; $i -lt $NUM_INSTANCES; $i++) {
     $mitmPort = $MITM_START_PORT + $i
@@ -121,8 +183,5 @@ for ($i = 0; $i -lt $NUM_INSTANCES; $i++) {
     Write-Host "Started mitmproxy on port $mitmPort using Privoxy on $privoxyPort"
 }
 
-# ======================== FINAL CHECK ========================
 Write-Host "Setup completed successfully!"
-Write-Host "Mitmproxy instances running on ports 8081-8090"
-Write-Host "Privoxy instances running on ports 8118-8127"
 Pause
