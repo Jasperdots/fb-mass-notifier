@@ -3,19 +3,22 @@ $AdminCheck = [System.Security.Principal.WindowsPrincipal] [System.Security.Prin
 $AdminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
 
 if (-not $AdminCheck.IsInRole($AdminRole)) {
-    Write-Host "Requesting administrative privileges..."
-    Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
+    if (-not $env:ADMIN_ELEVATED) {
+        Write-Host "Requesting administrative privileges..."
+        Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`" -NoProfile -WindowStyle Hidden -Command `$env:ADMIN_ELEVATED=1; & `"$PSCommandPath`"" -Verb RunAs
+        exit
+    }
+}
 }
 
+# ======================== CONFIGURATION ========================
 # ======================== CONFIGURATION ========================
 $PYTHON_VERSION = "3.11.6"
 $PYTHON_INSTALLER = "C:\Users\Administrator\Desktop\inst\python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_INSTALL_PATH = "C:\Python311"
-
-# Required pip modules (including socks5 support)
 $REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3", "pysocks", "python-dotenv")
+
 
 # Privoxy Configuration
 $PRIVOXY_URL = "https://www.privoxy.org/sf-download-mirror/Win32/4.0.0%20%28stable%29/privoxy_setup_4.0.0.exe"
@@ -28,59 +31,45 @@ $MITM_START_PORT = 8081
 $PRIVOXY_START_PORT = 8118
 $ENV_FILE = ".env"
 
-# ======================== INSTALL PYTHON ========================
-# ======================== INSTALL PYTHON ========================
+## ======================== INSTALL PYTHON ========================
 Write-Host "Checking if Python is installed..."
-
 $PythonInstalled = $false
 $PythonExecutable = $null
 
-# Attempt to detect Python installation
-$PythonPaths = @("python", "C:\Python311\python.exe", "C:\Program Files\Python311\python.exe", "C:\Program Files (x86)\Python311\python.exe")
-
-foreach ($path in $PythonPaths) {
-    if (Test-Path $path) {
+# Detect Python Installation
+try {
+    $PythonExecutable = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($PythonExecutable) {
         $PythonInstalled = $true
-        $PythonExecutable = $path
-        break
+        Write-Host "Python is already installed: $PythonExecutable"
     }
+} catch {
+    Write-Host "Python not found. Installing Python..."
 }
 
-if ($PythonInstalled) {
-    Write-Host "Python is already installed: $($PythonExecutable)"
-} else {
-    Write-Host "Python not found. Installing Python..."
-
+if (-not $PythonInstalled) {
     if (-not (Test-Path $PYTHON_INSTALLER)) {
         Write-Host "Downloading Python installer..."
         Invoke-WebRequest -Uri $PYTHON_URL -OutFile $PYTHON_INSTALLER
+
+        if (-not (Test-Path $PYTHON_INSTALLER)) {
+            Write-Host "Python installer failed to download. Check the URL!"
+            exit 1
+        }
     }
 
     Write-Host "Installing Python..."
-    Start-Process -FilePath $PYTHON_INSTALLER -ArgumentList "/quiet InstallAllUsers=1 TargetDir=$PYTHON_INSTALL_PATH PrependPath=1" -NoNewWindow -Wait
+    Start-Process -FilePath $PYTHON_INSTALLER -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1" -NoNewWindow -Wait
 
-    # Verify Installation
     $PythonExecutable = "$PYTHON_INSTALL_PATH\python.exe"
-    if (Test-Path $PythonExecutable) {
-        Write-Host "Python installed successfully!"
-    } else {
+    if (-not (Test-Path $PythonExecutable)) {
         Write-Host "Python installation failed!"
         exit 1
     }
 }
 
 # Ensure Python is in PATH
-$PythonPath = "$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
-$CurrentPath = [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine)
-
-if ($CurrentPath -notmatch [regex]::Escape($PYTHON_INSTALL_PATH)) {
-    Write-Host "Adding Python to system PATH..."
-    $NewPath = "$CurrentPath;$PythonPath"
-    [System.Environment]::SetEnvironmentVariable("Path", $NewPath, [System.EnvironmentVariableTarget]::Machine)
-}
-
-# Update the session's PATH
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine)
+$env:Path += ";$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
 
 Write-Host "Verifying Python installation..."
 $PythonVersion = & $PythonExecutable --version 2>$null
@@ -90,13 +79,10 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "Python installed successfully: $PythonVersion"
 }
 
-Write-Host "Ensuring pip is installed and updated..."
-& $PythonExecutable -m ensurepip
-& $PythonExecutable -m pip install --upgrade pip
-& $PythonExecutable -m pip install ($REQUIRED_PIP_PACKAGES -join " ")
+Write-Host "Installing pip packages..."
+$REQUIRED_PIP_PACKAGES | ForEach-Object { & $PythonExecutable -m pip install $_ }
 
-
-Write-Host "Python and pip setup completed successfully!"
+Write-Host "Python setup completed successfully!"
 
 # ======================== PROMPT FOR SOCKS5 CREDENTIALS ========================
 Write-Host "Enter SOCKS5 Proxy Credentials (Press Enter to use existing values):"
