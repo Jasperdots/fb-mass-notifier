@@ -11,7 +11,7 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
 # ======================== CONFIGURATION ========================
 $PYTHON_VERSION = "3.11.6"
 $PYTHON_INSTALLER = "C:\Users\Administrator\Desktop\inst\python-$PYTHON_VERSION-amd64.exe"
-$PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_INSTALLER"
+$PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_INSTALL_PATH = "C:\Python311"
 
 # Required pip modules (including socks5 support)
@@ -93,7 +93,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Ensuring pip is installed and updated..."
 & $PythonExecutable -m ensurepip
 & $PythonExecutable -m pip install --upgrade pip
-& $PythonExecutable -m pip install $REQUIRED_PIP_PACKAGES -join " "
+& $PythonExecutable -m pip install ($REQUIRED_PIP_PACKAGES -join " ")
 
 
 Write-Host "Python and pip setup completed successfully!"
