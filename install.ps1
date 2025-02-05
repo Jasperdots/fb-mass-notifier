@@ -71,7 +71,7 @@ foreach ($path in $PythonPaths) {
     }
 }
 
-# Try Windows Store Installation First
+# Try Installing with Windows Store (Winget)
 if (-not $PythonInstalled) {
     Write-Host "Python not found. Attempting to install via Windows Store..."
 
@@ -84,12 +84,15 @@ if (-not $PythonInstalled) {
     if ($WingetAvailable) {
         Write-Host "Winget detected. Installing Python via Windows Store..."
         winget install -e --id Python.Python.3.11 --silent
-        Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 10  # Allow installation time
 
+        # **🔹 FIX: Re-check if Python was installed via Winget**
         $PythonExecutable = (Get-Command python -ErrorAction SilentlyContinue).Source
         if ($PythonExecutable -and (Test-Path $PythonExecutable) -and $PythonExecutable -notmatch "WindowsApps") {
             $PythonInstalled = $true
             Write-Host "Python installed successfully via Windows Store: $PythonExecutable"
+        } else {
+            Write-Host "Winget installation failed or Python not detected yet, falling back to manual install..."
         }
     } else {
         Write-Host "Winget is not available. Falling back to manual installation..."
