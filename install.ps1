@@ -9,7 +9,7 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
         exit
     }
 }
-}
+
 
 # ======================== CONFIGURATION ========================
 # ======================== CONFIGURATION ========================
