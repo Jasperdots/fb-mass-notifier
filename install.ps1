@@ -41,25 +41,65 @@ if (Test-Path $PythonAliasPath) {
 } else {
     Write-Host "No Windows Store Python alias found."
 }
-## ======================== INSTALL PYTHON ========================
+
+# ======================== INSTALL PYTHON ========================
 Write-Host "Checking if Python is installed..."
 $PythonInstalled = $false
 $PythonExecutable = $null
 
 # Detect Python Installation
 try {
-    $PythonExecutable = (Get-Command python -ErrorAction SilentlyContinue).Source
-    if ($PythonExecutable) {
+    $DetectedPython = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($DetectedPython -and $DetectedPython -notmatch "WindowsApps") {
+        $PythonExecutable = $DetectedPython
         $PythonInstalled = $true
-        Write-Host "Python is already installed: $PythonExecutable"
     }
-} catch {
-    Write-Host "Python not found. Installing Python..."
+} catch { }
+
+# Check Common Install Locations
+$PythonPaths = @(
+    "C:\Python311\python.exe",
+    "C:\Program Files\Python311\python.exe",
+    "C:\Program Files (x86)\Python311\python.exe"
+)
+
+foreach ($path in $PythonPaths) {
+    if (Test-Path $path) {
+        $PythonExecutable = $path
+        $PythonInstalled = $true
+        break
+    }
 }
 
+# Try Windows Store Installation First
 if (-not $PythonInstalled) {
+    Write-Host "Python not found. Attempting to install via Windows Store..."
+
+    $WingetAvailable = $false
+    try {
+        $wingetCheck = winget --version 2>$null
+        if ($wingetCheck) { $WingetAvailable = $true }
+    } catch { }
+
+    if ($WingetAvailable) {
+        Write-Host "Winget detected. Installing Python via Windows Store..."
+        winget install -e --id Python.Python.3.11 --silent
+        Start-Sleep -Seconds 10
+
+        $PythonExecutable = (Get-Command python -ErrorAction SilentlyContinue).Source
+        if ($PythonExecutable -and (Test-Path $PythonExecutable) -and $PythonExecutable -notmatch "WindowsApps") {
+            $PythonInstalled = $true
+            Write-Host "Python installed successfully via Windows Store: $PythonExecutable"
+        }
+    } else {
+        Write-Host "Winget is not available. Falling back to manual installation..."
+    }
+}
+
+# If Windows Store Install Fails, Download Python Manually
+if (-not $PythonInstalled) {
+    Write-Host "Downloading Python installer..."
     if (-not (Test-Path $PYTHON_INSTALLER)) {
-        Write-Host "Downloading Python installer..."
         Invoke-WebRequest -Uri $PYTHON_URL -OutFile $PYTHON_INSTALLER
 
         if (-not (Test-Path $PYTHON_INSTALLER)) {
@@ -70,13 +110,14 @@ if (-not $PythonInstalled) {
 
     Write-Host "Installing Python..."
     Start-Process -FilePath $PYTHON_INSTALLER -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1" -NoNewWindow -Wait
-
-    $PythonExecutable = "$PYTHON_INSTALL_PATH\python.exe"
-    if (-not (Test-Path $PythonExecutable)) {
-        Write-Host "Python installation failed!"
-        exit 1
-    }
 }
+
+# Install PIP Packages
+Write-Host "Installing pip packages..."
+& $PythonExecutable -m pip install --upgrade pip
+& $PythonExecutable -m pip install $REQUIRED_PIP_PACKAGES -join " "
+
+Write-Host "Python setup completed successfully!"
 
 # Ensure Python is in PATH
 $env:Path += ";$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
@@ -85,6 +126,7 @@ Write-Host "Verifying Python installation..."
 $PythonVersion = & $PythonExecutable --version 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Python installation is not recognized. Try restarting PowerShell."
+    exit 1
 } else {
     Write-Host "Python installed successfully: $PythonVersion"
 }
