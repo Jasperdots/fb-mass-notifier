@@ -31,6 +31,11 @@ $MITM_START_PORT = 8081
 $PRIVOXY_START_PORT = 8118
 $ENV_FILE = ".env"
 
+
+# ======================== DISABLE WINDOWS STORE PYTHON ALIAS ========================
+Write-Host "Disabling Windows Store Python alias (if exists)..."
+Get-AppExecutionAlias | Where-Object { $_.PackageFamilyName -like "*Python*" } | Disable-AppExecutionAlias
+
 ## ======================== INSTALL PYTHON ========================
 Write-Host "Checking if Python is installed..."
 $PythonInstalled = $false
