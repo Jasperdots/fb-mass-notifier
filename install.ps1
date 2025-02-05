@@ -32,10 +32,15 @@ $PRIVOXY_START_PORT = 8118
 $ENV_FILE = ".env"
 
 
-# ======================== DISABLE WINDOWS STORE PYTHON ALIAS ========================
+# Disable Windows Store Python Alias via Registry
 Write-Host "Disabling Windows Store Python alias (if exists)..."
-Get-AppExecutionAlias | Where-Object { $_.PackageFamilyName -like "*Python*" } | Disable-AppExecutionAlias
-
+$PythonAliasPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe"
+if (Test-Path $PythonAliasPath) {
+    Remove-Item -Path $PythonAliasPath -Force
+    Write-Host "Windows Store Python alias disabled."
+} else {
+    Write-Host "No Windows Store Python alias found."
+}
 ## ======================== INSTALL PYTHON ========================
 Write-Host "Checking if Python is installed..."
 $PythonInstalled = $false
