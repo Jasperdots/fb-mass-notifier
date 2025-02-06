@@ -38,6 +38,7 @@ privoxy_processes = []
 def generate_privoxy_config(port):
     """Generates a unique Privoxy configuration file for each instance."""
     config_content = f"""
+accept-intercepted-requests 1
 listen-address  127.0.0.1:{port}
 forward-socks5 / {SOCKS5_USER}:{SOCKS5_PASS}@{SOCKS5_PROXY}:{SOCKS5_PORT} .
     """.strip()
