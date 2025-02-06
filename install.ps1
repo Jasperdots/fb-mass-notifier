@@ -243,5 +243,8 @@ for ($i = 0; $i -lt $NUM_INSTANCES; $i++) {
     Write-Host "Started mitmproxy on port $mitmPort using Privoxy on $privoxyPort"
 }
 
+New-NetFirewallRule -DisplayName "Allow Privoxy" -Direction Outbound -Program "C:\Program Files (x86)\Privoxy\privoxy.exe" -Action Allow
+New-NetFirewallRule -DisplayName "Allow mitmproxy" -Direction Outbound -Program "C:\Python311\Scripts\mitmdump.exe" -Action Allow
+
 Write-Host "Setup completed successfully!"
 Pause
