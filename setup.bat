@@ -7,4 +7,4 @@ if %errorLevel% neq 0 (
 )
 
 :: Run PowerShell script with Bypass policy
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Path\To\Your\Script.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "install.ps1"
