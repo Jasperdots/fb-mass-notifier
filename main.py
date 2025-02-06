@@ -87,7 +87,7 @@ def start_mitmproxy_instances():
         log_file = open(f"mitmproxy_{mitmproxy_port}.log", "w")
 
         # Mitmproxy command with upstream Privoxy proxy
-        command = f"mitmdump -s ws_mon.py -p {mitmproxy_port} --set websocket=true --mode upstream:http://127.0.0.1:{privoxy_port}"
+        command = f"mitmdump -s ws_monUPD.py -p {mitmproxy_port} --set websocket=true --mode upstream:http://127.0.0.1:{privoxy_port}"
         process = subprocess.Popen(command, shell=True, stdout=log_file, stderr=log_file)
 
         mitmproxy_processes.append(process)
