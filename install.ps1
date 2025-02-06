@@ -125,6 +125,7 @@ Write-Host "Python setup completed successfully!"
 # Ensure Python is in PATH
 $env:Path += ";$PYTHON_INSTALL_PATH;$PYTHON_INSTALL_PATH\Scripts"
 
+
 Write-Host "Verifying Python installation..."
 $PythonVersion = & $PythonExecutable --version 2>$null
 if ($LASTEXITCODE -ne 0) {
@@ -182,7 +183,7 @@ PASSWORD=$M_PASSWORD
 RECEIVER=$RECEIVER
 SMTP_SERVER=$SMTP_SERVER
 SMTP_PORT=$SMTP_PORT
-"@ | Set-Content -Path $ENV_FILE -Encoding UTF8
+"@ | Out-File -FilePath $ENV_FILE -Encoding utf8
 
 Write-Host "Credentials saved successfully!"
 
