@@ -153,15 +153,18 @@ def get_html_template(actor_id, recipient_id):
                 color: #a0a0a0;
                 text-align: center;
             }}
+            .text-white {{
+                color: white;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">📢 New Facebook Message Notification</div>
             <div class="content">
-                <h2>New Message Alert</h2>
-                <p><b>Sender (actor_id):</b> {actor_id}</p>
-                <p><b>Receiver (recipient_id):</b> {recipient_id}</p>
+                <h2 class="text-white">New Message Alert</h2>
+                <p class="text-white"><b>Sender (actor_id):</b> {actor_id}</p>
+                <p class="text-white"><b>Receiver (recipient_id):</b> {recipient_id}</p>
             </div>
             <div class="footer">This is an automated notification. Please do not reply.</div>
         </div>
