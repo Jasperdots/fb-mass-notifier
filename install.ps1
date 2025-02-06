@@ -29,7 +29,7 @@ $PRIVOXY_INSTALL_PATH = "C:\Program Files (x86)\Privoxy"
 $NUM_INSTANCES = 10
 $MITM_START_PORT = 8081
 $PRIVOXY_START_PORT = 8118
-$ENV_FILE = ".env"
+$ENV_FILE = "config.ini"
 
 
 # Disable Windows Store Python Alias via Registry
@@ -140,7 +140,7 @@ $REQUIRED_PIP_PACKAGES | ForEach-Object { & $PythonExecutable -m pip install $_ 
 Write-Host "Python setup completed successfully!"
 
 # ======================== PROMPT FOR SOCKS5 CREDENTIALS ========================
-Write-Host "Enter SOCKS5 Proxy Credentials (Press Enter to use existing values):"
+Write-Host "Enter SOCKS5 Proxy Credentials & Email Configs (Press Enter to use existing values):"
 
 if (Test-Path $ENV_FILE) {
     $envVars = Get-Content $ENV_FILE | Where-Object { $_ -match "=" } | ForEach-Object {
@@ -158,12 +158,30 @@ $SOCKS5_PASS = Read-Host "Enter SOCKS5 Password" -Default $env:SOCKS5_PASS -AsSe
 $SOCKS5_PASS = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SOCKS5_PASS))
 
+$SENDER = Read-Host "Enter E-mail Sender" -Default $env:SENDER
+$M_PASSWORD = Read-Host "Enter E-mail Sender Password" -Default $env:M_PASSWORD - AsSecureString
+$M_PASSWORD = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($M_PASSWORD))
+$RECEIVER = Read-Host "Enter the Email you want to receive notifications" -Default $env:RECEIVER
+$SMTP_SERVER = Read-Host "Enter SMTP Server" -Default $env:SMTP_SERVER
+$SMTP_PORT = Read-Host "Enter SMTP Server (567)" -Default $env:SMTP_PORT
+
+
+
 Write-Host "Saving credentials to .env file..."
 @"
-SOCKS5_PROXY=$SOCKS5_PROXY
-SOCKS5_PORT=$SOCKS5_PORT
-SOCKS5_USER=$SOCKS5_USER
-SOCKS5_PASS=$SOCKS5_PASS
+[SOCKS5]
+PROXY=$SOCKS5_PROXY
+PORT=$SOCKS5_PORT
+USER=$SOCKS5_USER
+PASS=$SOCKS5_PASS
+
+[EMAIL]
+SENDER=$SENDER
+PASSWORD=$M_PASSWORD
+RECEIVER=$RECEIVER
+SMTP_SERVER=$SMTP_SERVER
+SMTP_PORT=$SMTP_PORT
 "@ | Set-Content -Path $ENV_FILE -Encoding UTF8
 
 Write-Host "Credentials saved successfully!"
