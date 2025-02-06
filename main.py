@@ -3,28 +3,33 @@ import time
 import os
 import signal
 import sys
+import configparser
 from dotenv import load_dotenv
 
-# Load .env file for SOCKS5 credentials
-load_dotenv()
+config = configparser.ConfigParser()
+config.read("config.ini")
 
-# Configuration
-NUM_PROXIES = 10  # Number of instances
-START_MITMPROXY_PORT = 8081  # mitmproxy ports
-START_PRIVOXY_PORT = 8118  # Privoxy ports
-PRIVOXY_CONFIG_DIR = "C:\\Program Files (x86)\\Privoxy"
-PRIVOXY_EXECUTABLE = os.path.join(PRIVOXY_CONFIG_DIR, "privoxy.exe")
+# SOCKS5 Proxy Credentials from config.ini
+try:
+    SOCKS5_PROXY = config["SOCKS5"]["PROXY"]
+    SOCKS5_PORT = int(config["SOCKS5"]["PORT"])
+    SOCKS5_USER = config["SOCKS5"].get("USER", "")
+    SOCKS5_PASS = config["SOCKS5"].get("PASS", "")
+except KeyError as e:
+    print(f"ERROR: Missing SOCKS5 config value: {e}")
+    exit(1)
 
-# SOCKS5 Proxy Configuration
-SOCKS5_PROXY = os.getenv("SOCKS5_PROXY")
-SOCKS5_PORT = os.getenv("SOCKS5_PORT")
-SOCKS5_USER = os.getenv("SOCKS5_USER")
-SOCKS5_PASS = os.getenv("SOCKS5_PASS")
+# Email Configuration from config.ini
+try:
+    EMAIL_SENDER = config["EMAIL"]["SENDER"]
+    EMAIL_PASSWORD = config["EMAIL"]["PASSWORD"]
+    EMAIL_RECEIVER = config["EMAIL"]["RECEIVER"]
+    SMTP_SERVER = config["EMAIL"]["SMTP_SERVER"]
+    SMTP_PORT = int(config["EMAIL"]["SMTP_PORT"])
+except KeyError as e:
+    print(f"ERROR: Missing EMAIL config value: {e}")
+    exit(1)
 
-# Validate SOCKS5 settings
-if not SOCKS5_PROXY or not SOCKS5_PORT:
-    print("ERROR: Missing SOCKS5 proxy settings in .env file!")
-    sys.exit(1)
 
 # Store running processes
 mitmproxy_processes = []
