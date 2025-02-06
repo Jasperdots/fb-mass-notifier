@@ -14,7 +14,7 @@ if (-not $AdminCheck.IsInRole($AdminRole)) {
 # ======================== CONFIGURATION ========================
 # ======================== CONFIGURATION ========================
 $PYTHON_VERSION = "3.11.6"
-$PYTHON_INSTALLER = "C:\Users\Administrator\Desktop\inst\python-$PYTHON_VERSION-amd64.exe"
+$PYTHON_INSTALLER = "C:\Users\Administrator\Downloads\python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-amd64.exe"
 $PYTHON_INSTALL_PATH = "C:\Python311"
 $REQUIRED_PIP_PACKAGES = @("mitmproxy", "requests", "cryptography", "urllib3", "pysocks", "python-dotenv", "configparser")
