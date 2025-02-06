@@ -14,9 +14,14 @@ from mitmproxy import http
 from logging.handlers import RotatingFileHandler
 
 # ========================== CONFIGURATION ========================== #
-# Load configuration from config.ini
+with open("config.ini", "r", encoding="utf-8-sig") as f:
+    data = f.read()
+
+with open("config.ini", "w", encoding="utf-8") as f:
+    f.write(data)
+
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("config.ini", encoding="utf-8")
 
 # SOCKS5 Proxy Credentials from config.ini
 try:
