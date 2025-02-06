@@ -6,9 +6,14 @@ import sys
 import configparser
 from dotenv import load_dotenv
 
-config = configparser.ConfigParser()
-config.read("config.ini")
+with open("config.ini", "r", encoding="utf-8-sig") as f:
+    data = f.read()
 
+with open("config.ini", "w", encoding="utf-8") as f:
+    f.write(data)
+
+config = configparser.ConfigParser()
+config.read("config.ini", encoding="utf-8")
 # Configuration
 NUM_PROXIES = 10  # Number of instances
 START_MITMPROXY_PORT = 8081  # mitmproxy ports
