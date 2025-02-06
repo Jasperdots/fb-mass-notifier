@@ -9,6 +9,13 @@ from dotenv import load_dotenv
 config = configparser.ConfigParser()
 config.read("config.ini")
 
+# Configuration
+NUM_PROXIES = 10  # Number of instances
+START_MITMPROXY_PORT = 8081  # mitmproxy ports
+START_PRIVOXY_PORT = 8118  # Privoxy ports
+PRIVOXY_CONFIG_DIR = "C:\\Program Files (x86)\\Privoxy"
+PRIVOXY_EXECUTABLE = os.path.join(PRIVOXY_CONFIG_DIR, "privoxy.exe")
+
 # SOCKS5 Proxy Credentials from config.ini
 try:
     SOCKS5_PROXY = config["SOCKS5"]["PROXY"]
